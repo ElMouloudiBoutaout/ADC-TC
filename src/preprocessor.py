@@ -24,11 +24,27 @@ def build_preprocessor() -> ColumnTransformer:
 def build_features(df: pd.DataFrame):
     """Fit-transform features and return (X_array, y_reg, y_clf).
 
-    For use in the notebook only (fits on full data).
-    For LOAOCV, use build_preprocessor() inside each fold.
+    Adds interaction features: P*D, V*S, and E/L (with safety epsilon).
     """
-    preprocessor = build_preprocessor()
-    X = preprocessor.fit_transform(df[FEATURE_COLS])
+    df = df.copy()
+    
+    # Feature Engineering (Synergy)
+    df['P_D'] = df['P'] * df['D']
+    df['V_S'] = df['V'] * df['S(payload,organe)']
+    df['E_L'] = df['E'] / (df['L'] + 1e-6) # Higher E and lower L = high toxicity
+    
+    # Update feature lists
+    numeric_features = NUMERIC_FEATURES + ['P_D', 'V_S', 'E_L']
+    
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', StandardScaler(), numeric_features),
+            ('cat', OneHotEncoder(handle_unknown='ignore', sparse_output=False),
+             CATEGORICAL_FEATURES),
+        ]
+    )
+    
+    X = preprocessor.fit_transform(df[FEATURE_COLS + ['P_D', 'V_S', 'E_L']])
     y_reg = df[TARGET_REG].values.astype(float)
     y_clf = df[TARGET_CLF].values.astype(int)
     return X, y_reg, y_clf

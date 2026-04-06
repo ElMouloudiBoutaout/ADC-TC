@@ -63,7 +63,14 @@ if predict_btn:
         'Payload class': payload, 'Organe': organe,
     }])
 
-    X_input = preprocessor.transform(input_df[FEATURE_COLS])
+    # Add interaction features for the model
+    input_df['P_D'] = input_df['P'] * input_df['D']
+    input_df['V_S'] = input_df['V'] * input_df['S(payload,organe)']
+    input_df['E_L'] = input_df['E'] / (input_df['L'] + 1e-6)
+
+    # Note: FEATURE_COLS + interactions must match what preprocessor expects
+    all_features = FEATURE_COLS + ['P_D', 'V_S', 'E_L']
+    X_input = preprocessor.transform(input_df[all_features])
 
     pred_reg = float(reg_model.predict(X_input)[0])
     pred_prob = float(clf_model.predict_proba(X_input)[0][1])
